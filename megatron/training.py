@@ -404,7 +404,8 @@ def train_step(forward_step_func, data_iterator,
     optimizer.zero_grad()
 
     # Forward pass.
-    model[0].flops_profiler.start_profile(ignore_list=None)
+    if is_last_rank() and args.curr_iteration % args.log_interval == 0:
+        model[0].flops_profiler.start_profile(ignore_list=None)
 
     timers('forward-backward', log_level=1).start(
         barrier=args.barrier_with_L1_time)
