@@ -464,13 +464,15 @@ def train_step(forward_step_func, data_iterator,
             losses_reduced_for_key = [x[key] for x in losses_reduced]
             loss_reduced[key] = sum(losses_reduced_for_key) / len(losses_reduced_for_key)
 
-        model[0].flops_profiler.print_model_profile(profile_step=increment)
-        model[0].flops_profiler.end_profile()
+        if is_last_rank():
+            model[0].flops_profiler.print_model_profile(profile_step=increment)
+            model[0].flops_profiler.end_profile()
 
         return loss_reduced, skipped_iter, grad_norm, num_zeros_in_grad
 
-    model[0].flops_profiler.print_model_profile(profile_step=increment)
-    model[0].flops_profiler.end_profile()
+    if is_last_rank():
+        model[0].flops_profiler.print_model_profile(profile_step=increment)
+        model[0].flops_profiler.end_profile()
     return {}, skipped_iter, grad_norm, num_zeros_in_grad
 
 
