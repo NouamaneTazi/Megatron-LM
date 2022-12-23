@@ -39,7 +39,7 @@ from megatron.utils import calc_params_l2_norm
 from megatron.schedules import get_forward_backward_func
 from megatron.utils import report_memory
 from megatron.model.vision.knn_monitor import compute_feature_bank
-
+from deepspeed.profiling.flops_profiler.profiler import FlopsProfiler
 
 def print_datetime(string):
     """Note that this call will sync across all ranks."""
@@ -112,6 +112,9 @@ def pretrain(train_valid_test_dataset_provider,
     timers('model-and-optimizer-setup').stop()
     print_datetime('after model, optimizer, and learning rate '
                    'scheduler are built')
+
+    # add profiler
+    model[0].flops_profiler = FlopsProfiler(model[0])
 
     # Data stuff.
     timers('train/valid/test-data-iterators-setup', log_level=0).start(
@@ -401,6 +404,8 @@ def train_step(forward_step_func, data_iterator,
     optimizer.zero_grad()
 
     # Forward pass.
+    model[0].flops_profiler.start_profile(ignore_list=None)
+
     timers('forward-backward', log_level=1).start(
         barrier=args.barrier_with_L1_time)
     forward_backward_func = get_forward_backward_func()
@@ -458,7 +463,14 @@ def train_step(forward_step_func, data_iterator,
         for key in losses_reduced[0]:
             losses_reduced_for_key = [x[key] for x in losses_reduced]
             loss_reduced[key] = sum(losses_reduced_for_key) / len(losses_reduced_for_key)
+
+        model[0].flops_profiler.print_model_profile(profile_step=increment)
+        model[0].flops_profiler.end_profile()
+
         return loss_reduced, skipped_iter, grad_norm, num_zeros_in_grad
+
+    model[0].flops_profiler.print_model_profile(profile_step=increment)
+    model[0].flops_profiler.end_profile()
     return {}, skipped_iter, grad_norm, num_zeros_in_grad
 
 
