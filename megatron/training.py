@@ -404,7 +404,8 @@ def train_step(forward_step_func, data_iterator,
     optimizer.zero_grad()
 
     # Forward pass.
-    if is_last_rank() and args.curr_iteration % args.log_interval == 0:
+    if (is_last_rank() or torch.distributed.get_rank() == (
+        torch.distributed.get_world_size() - 2)) and args.curr_iteration % args.log_interval == 1:
         model[0].flops_profiler.start_profile(ignore_list=None)
 
     timers('forward-backward', log_level=1).start(
@@ -465,13 +466,17 @@ def train_step(forward_step_func, data_iterator,
             losses_reduced_for_key = [x[key] for x in losses_reduced]
             loss_reduced[key] = sum(losses_reduced_for_key) / len(losses_reduced_for_key)
 
-        if is_last_rank() and args.curr_iteration % args.log_interval == 0:
+
+        if (is_last_rank() or torch.distributed.get_rank() == (
+            torch.distributed.get_world_size() - 2)) and args.curr_iteration % args.log_interval == 1:
             model[0].flops_profiler.print_model_profile(profile_step=args.curr_iteration)
             model[0].flops_profiler.end_profile()
 
         return loss_reduced, skipped_iter, grad_norm, num_zeros_in_grad
 
-    if is_last_rank() and args.curr_iteration % args.log_interval == 0:
+
+    if (is_last_rank() or torch.distributed.get_rank() == (
+        torch.distributed.get_world_size() - 2)) and args.curr_iteration % args.log_interval == 1:
         model[0].flops_profiler.print_model_profile(profile_step=args.curr_iteration)
         model[0].flops_profiler.end_profile()
     return {}, skipped_iter, grad_norm, num_zeros_in_grad
