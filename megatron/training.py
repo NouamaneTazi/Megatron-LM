@@ -404,8 +404,7 @@ def train_step(forward_step_func, data_iterator,
     optimizer.zero_grad()
 
     # Forward pass.
-    if (is_last_rank() or torch.distributed.get_rank() == (
-        torch.distributed.get_world_size() - 2)) and args.curr_iteration % args.log_interval == 1:
+    if args.curr_iteration % args.log_interval == 1:
         model[0].flops_profiler.start_profile(ignore_list=None)
 
     timers('forward-backward', log_level=1).start(
@@ -459,6 +458,16 @@ def train_step(forward_step_func, data_iterator,
     if args.empty_unused_memory_level >= 2:
         torch.cuda.empty_cache()
 
+    if args.curr_iteration % args.log_interval == 1:
+        print('Model parallel rank: ', mpu.get_pipeline_model_parallel_rank())
+        print('Model parallel world size: ', mpu.get_pipeline_model_parallel_world_size())
+        print('Data parallel rank: ', mpu.get_data_parallel_rank())
+        print('Data parallel world size: ', mpu.get_data_parallel_world_size())
+        print('Torch distributed rank: ', torch.distributed.get_rank())
+        print('Torch distributed world size: ', torch.distributed.get_world_size())
+        model[0].flops_profiler.print_model_profile(profile_step=args.curr_iteration)
+        model[0].flops_profiler.end_profile()
+
     if mpu.is_pipeline_last_stage(ignore_virtual=True):
         # Average loss across microbatches.
         loss_reduced = {}
@@ -466,19 +475,8 @@ def train_step(forward_step_func, data_iterator,
             losses_reduced_for_key = [x[key] for x in losses_reduced]
             loss_reduced[key] = sum(losses_reduced_for_key) / len(losses_reduced_for_key)
 
-
-        if (is_last_rank() or torch.distributed.get_rank() == (
-            torch.distributed.get_world_size() - 2)) and args.curr_iteration % args.log_interval == 1:
-            model[0].flops_profiler.print_model_profile(profile_step=args.curr_iteration)
-            model[0].flops_profiler.end_profile()
-
         return loss_reduced, skipped_iter, grad_norm, num_zeros_in_grad
 
-
-    if (is_last_rank() or torch.distributed.get_rank() == (
-        torch.distributed.get_world_size() - 2)) and args.curr_iteration % args.log_interval == 1:
-        model[0].flops_profiler.print_model_profile(profile_step=args.curr_iteration)
-        model[0].flops_profiler.end_profile()
     return {}, skipped_iter, grad_norm, num_zeros_in_grad
 
 
