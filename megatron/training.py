@@ -404,7 +404,7 @@ def train_step(forward_step_func, data_iterator,
     optimizer.zero_grad()
 
     # Forward pass.
-    if args.curr_iteration % args.log_interval == 1:
+    if args.curr_iteration % args.log_interval == 1 and mpu.get_data_parallel_rank() == mpu.get_data_parallel_world_size() - 1:
         model[0].flops_profiler.start_profile(ignore_list=None)
 
     timers('forward-backward', log_level=1).start(
@@ -458,7 +458,7 @@ def train_step(forward_step_func, data_iterator,
     if args.empty_unused_memory_level >= 2:
         torch.cuda.empty_cache()
 
-    if args.curr_iteration % args.log_interval == 1:
+    if args.curr_iteration % args.log_interval == 1 and mpu.get_data_parallel_rank() == mpu.get_data_parallel_world_size() - 1:
         print('Model parallel rank: ', mpu.get_pipeline_model_parallel_rank())
         print('Model parallel world size: ', mpu.get_pipeline_model_parallel_world_size())
         print('Data parallel rank: ', mpu.get_data_parallel_rank())
