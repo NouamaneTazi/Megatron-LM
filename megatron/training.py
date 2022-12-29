@@ -459,12 +459,6 @@ def train_step(forward_step_func, data_iterator,
         torch.cuda.empty_cache()
 
     if args.curr_iteration % args.log_interval == 1 and mpu.get_data_parallel_rank() == mpu.get_data_parallel_world_size() - 1:
-        print('Model parallel rank: ', mpu.get_pipeline_model_parallel_rank())
-        print('Model parallel world size: ', mpu.get_pipeline_model_parallel_world_size())
-        print('Data parallel rank: ', mpu.get_data_parallel_rank())
-        print('Data parallel world size: ', mpu.get_data_parallel_world_size())
-        print('Torch distributed rank: ', torch.distributed.get_rank())
-        print('Torch distributed world size: ', torch.distributed.get_world_size())
         model[0].flops_profiler.print_model_profile(profile_step=args.curr_iteration)
         model[0].flops_profiler.end_profile()
 
